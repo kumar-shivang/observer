@@ -37,7 +37,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             cmd_short   TEXT,
             cpu_percent REAL,
             mem_percent REAL,
-            gpu_mem_mb  REAL
+            gpu_mem_mb  REAL,
+            uid         INTEGER,
+            session_id  INTEGER,
+            cmd_hash    TEXT
         );
 
         CREATE INDEX IF NOT EXISTS idx_ps_ts       ON process_snapshots(ts);
@@ -78,8 +81,9 @@ def save_snapshot(
     conn.executemany(
         """
         INSERT INTO process_snapshots
-            (ts, pid, username, name, cmd_short, cpu_percent, mem_percent, gpu_mem_mb)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (ts, pid, username, name, cmd_short, cpu_percent, mem_percent, gpu_mem_mb,
+             uid, session_id, cmd_hash)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
@@ -91,6 +95,9 @@ def save_snapshot(
                 p.get("cpu_percent"),
                 p.get("memory_percent"),
                 p.get("gpu_mem_mb", 0.0),
+                p.get("uid"),
+                p.get("session_id"),
+                p.get("cmd_hash"),
             )
             for p in processes
         ],
