@@ -2,7 +2,7 @@
 Tests for monitor.process
 """
 from unittest.mock import MagicMock, patch
-from monitor.process import _short_cmd, get_processes
+from monitor.process import _short_cmd, get_identity, get_processes
 
 
 def _make_proc_info(pid=1, username="alice", name="python3",
@@ -58,6 +58,18 @@ class TestGetProcesses:
         assert len(result) == 1
         assert "cmd_short" in result[0]
 
+    def test_includes_identity_fields(self):
+        fake_info = _make_proc_info()
+        mock_proc = MagicMock()
+        mock_proc.info = fake_info
+
+        with patch("monitor.process.psutil.process_iter", return_value=[mock_proc]):
+            result = get_processes()
+
+        assert "uid" in result[0]
+        assert "session_id" in result[0]
+        assert "cmd_hash" in result[0]
+
     def test_skips_no_such_process(self):
         import psutil
 
@@ -84,3 +96,66 @@ class TestGetProcesses:
             result = get_processes()
 
         assert result == []
+
+
+class TestGetIdentity:
+    def _make_mock_process(self, pid=42, uid=1000,
+                           cmdline=None):
+        import psutil
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = pid
+        mock_proc.uids.return_value = MagicMock(real=uid)
+        mock_proc.cmdline.return_value = cmdline or ["python3", "train.py"]
+        return mock_proc
+
+    def test_returns_required_keys(self):
+        p = self._make_mock_process()
+        with patch("monitor.process.os.getsid", return_value=5000):
+            identity = get_identity(p)
+        assert {"uid", "session_id", "cmd_hash"} == set(identity.keys())
+
+    def test_uid_is_real_uid(self):
+        p = self._make_mock_process(uid=1001)
+        with patch("monitor.process.os.getsid", return_value=1):
+            identity = get_identity(p)
+        assert identity["uid"] == 1001
+
+    def test_session_id_from_getsid(self):
+        p = self._make_mock_process(pid=42)
+        with patch("monitor.process.os.getsid", return_value=9999) as mock_sid:
+            identity = get_identity(p)
+        mock_sid.assert_called_once_with(42)
+        assert identity["session_id"] == 9999
+
+    def test_cmd_hash_is_8_chars(self):
+        p = self._make_mock_process()
+        with patch("monitor.process.os.getsid", return_value=1):
+            identity = get_identity(p)
+        assert len(identity["cmd_hash"]) == 8
+
+    def test_cmd_hash_is_deterministic(self):
+        p = self._make_mock_process(cmdline=["python3", "train.py"])
+        with patch("monitor.process.os.getsid", return_value=1):
+            id1 = get_identity(p)
+            id2 = get_identity(p)
+        assert id1["cmd_hash"] == id2["cmd_hash"]
+
+    def test_cmd_hash_differs_for_different_commands(self):
+        p1 = self._make_mock_process(cmdline=["python3", "train.py"])
+        p2 = self._make_mock_process(cmdline=["python3", "eval.py"])
+        with patch("monitor.process.os.getsid", return_value=1):
+            id1 = get_identity(p1)
+            id2 = get_identity(p2)
+        assert id1["cmd_hash"] != id2["cmd_hash"]
+
+    def test_degrades_gracefully_on_access_denied(self):
+        import psutil
+        mock_proc = MagicMock(spec=psutil.Process)
+        mock_proc.pid = 99
+        mock_proc.uids.side_effect = psutil.AccessDenied(pid=99)
+        mock_proc.cmdline.side_effect = psutil.AccessDenied(pid=99)
+        with patch("monitor.process.os.getsid", side_effect=ProcessLookupError):
+            identity = get_identity(mock_proc)
+        assert identity["uid"] == -1
+        assert identity["session_id"] == -1
+        assert identity["cmd_hash"] == "d41d8cd9"  # md5("") prefix

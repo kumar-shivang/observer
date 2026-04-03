@@ -1,8 +1,8 @@
 """
 Aggregator
 ----------
-Collapses raw per-process records into per-user and per-process-name
-summaries suitable for Prometheus (controlled cardinality).
+Collapses raw per-process records into per-user, per-process-name, and
+per-session summaries suitable for Prometheus (controlled cardinality).
 
 Prometheus receives AGGREGATED data only.
 Raw per-process detail goes to SQLite (see storage.py).
@@ -84,3 +84,59 @@ def detect_abuse(
                 }
             )
     return events
+
+
+def group_by_session(processes: list[dict]) -> dict[int, list[dict]]:
+    """
+    Group processes by their OS session ID.
+
+    Session IDs naturally cluster related processes (e.g. a shell and the
+    jobs it spawned) without requiring knowledge of container or job IDs.
+
+    Returns:
+        {
+          1234: [proc_dict, proc_dict, ...],
+          5678: [proc_dict],
+          ...
+        }
+    """
+    groups: dict[int, list[dict]] = defaultdict(list)
+    for p in processes:
+        groups[p.get("session_id", -1)].append(p)
+    return dict(groups)
+
+
+def aggregate_by_session(processes: list[dict]) -> dict[int, dict]:
+    """
+    Aggregate resource usage per OS session.
+
+    Useful for attributing GPU/CPU cost to a "job" rather than a single PID.
+    The username is taken from the first process seen in each session.
+
+    Returns:
+        {
+          1234: {"username": "alice", "cpu": 80.0, "mem_pct": 8.0,
+                 "gpu_mem_mb": 6144.0, "proc_count": 2},
+          ...
+        }
+    """
+    agg: dict[int, dict] = defaultdict(
+        lambda: {
+            "username": "unknown",
+            "cpu": 0.0,
+            "mem_pct": 0.0,
+            "gpu_mem_mb": 0.0,
+            "proc_count": 0,
+        }
+    )
+
+    for p in processes:
+        session = p.get("session_id", -1)
+        agg[session]["cpu"] += p.get("cpu_percent") or 0.0
+        agg[session]["mem_pct"] += p.get("memory_percent") or 0.0
+        agg[session]["gpu_mem_mb"] += p.get("gpu_mem_mb", 0.0)
+        agg[session]["proc_count"] += 1
+        if agg[session]["username"] == "unknown":
+            agg[session]["username"] = p.get("username") or "unknown"
+
+    return dict(agg)
