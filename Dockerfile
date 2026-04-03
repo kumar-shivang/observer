@@ -42,5 +42,5 @@ RUN mkdir -p /data
 
 EXPOSE 8000
 
-# Run via the installed console script so uv manages PATH correctly
-CMD ["uv", "run", "observer"]
+# Run the module directly via the venv Python
+CMD ["/app/.venv/bin/python", "-m", "monitor.main"]

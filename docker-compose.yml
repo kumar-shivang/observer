@@ -9,7 +9,9 @@ services:
     privileged: true           # needed for full process visibility
     volumes:
       - /proc:/proc            # host proc (belt + suspenders alongside --pid=host)
-      - observer_data:/data    # SQLite persistence
+      - /etc/passwd:/etc/passwd:ro   # resolve UIDs → usernames
+      - /etc/group:/etc/group:ro     # resolve GIDs → group names
+      - ./data:/data                 # SQLite on host disk (survives down -v)
     environment:
       COLLECT_INTERVAL: "60"          # seconds between collection cycles
       ABUSE_GPU_MEM_MB: "10000"       # MB; alert if any user exceeds this
@@ -70,7 +72,6 @@ services:
       - monitor-net
 
 volumes:
-  observer_data:
   prometheus_data:
   grafana_data:
 

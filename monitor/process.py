@@ -6,6 +6,7 @@ Runs inside Docker with --pid=host so /proc is the real host /proc.
 """
 
 import psutil
+import pwd
 
 
 def get_processes() -> list[dict]:
@@ -19,13 +20,28 @@ def get_processes() -> list[dict]:
     ):
         try:
             info = p.info
-            # cpu_percent returns 0.0 on first call per process; that's fine —
-            # the scheduler loop calls this every cycle so it warms up quickly.
+            info["username"] = _resolve_username(info.get("username"))
             info["cmd_short"] = _short_cmd(info)
             data.append(info)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return data
+
+
+def _resolve_username(raw: str | None) -> str:
+    """
+    psutil may return a numeric UID string when the container's passwd doesn't
+    map the host UID. Fall back to pwd.getpwuid() which reads the mounted
+    /etc/passwd directly.
+    """
+    if raw is None:
+        return "unknown"
+    if raw.isdigit():
+        try:
+            return pwd.getpwuid(int(raw)).pw_name
+        except KeyError:
+            return raw
+    return raw
 
 
 def _short_cmd(info: dict) -> str:
