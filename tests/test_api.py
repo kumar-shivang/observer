@@ -14,14 +14,25 @@ from monitor.api import app
 @pytest.fixture(autouse=True)
 def inject_db():
     """
-    Each test gets a fresh in-memory DB injected into app.state.
-    autouse=True so no test has to remember to request it.
+    Each test gets a fresh in-memory DB.
+    The get_db dependency is overridden so the API uses it instead of /data.
+    autouse=True so every test in this module gets isolation automatically.
     """
+    from monitor.api import get_db
+
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     storage.init_db(conn)
-    app.state.db_conn = conn
+
+    def _override():
+        try:
+            yield conn
+        finally:
+            pass  # keep open; closed in finally below
+
+    app.dependency_overrides[get_db] = _override
     yield conn
+    app.dependency_overrides.pop(get_db, None)
     conn.close()
 
 
