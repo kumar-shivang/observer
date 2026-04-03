@@ -117,7 +117,12 @@ def ui(conn: sqlite3.Connection = Depends(get_db)):
     users = [r[0] for r in conn.execute(
         "SELECT DISTINCT username FROM process_snapshots ORDER BY username"
     ).fetchall()]
+    proc_names = [r[0] for r in conn.execute(
+        "SELECT DISTINCT name FROM process_snapshots ORDER BY name"
+    ).fetchall()]
     user_opts = "".join(f'<option value="{u}">{u}</option>' for u in users)
+    user_opts_blank = '<option value="">— any —</option>' + user_opts
+    proc_opts = "".join(f'<option value="{p}">{p}</option>' for p in proc_names)
 
     html = _HEAD
 
@@ -129,9 +134,18 @@ def ui(conn: sqlite3.Connection = Depends(get_db)):
       <label>User <select name="username">{user_opts}</select></label>
       <button class="del" type="submit">Delete all rows for user</button>
     </form>
+    <form data-action="/admin/sqlite/process" data-method="delete">
+      <label>Process name (GLOB) <input name="name" list="proc-list" placeholder="python* or exact name"></label>
+      <datalist id="proc-list">{chr(10).join(f'<option value="{p}">' for p in proc_names)}</datalist>
+      <label>User (optional) <select name="username">{user_opts_blank}</select></label>
+      <label>After (ISO UTC, optional) <input name="after" placeholder="2026-04-03T18:00:00+00:00"></label>
+      <label>Before (ISO UTC, optional) <input name="before" placeholder="2026-04-03T23:00:00+00:00"></label>
+      <button class="del" type="submit">Delete matching process rows</button>
+    </form>
     <form data-action="/admin/sqlite/timerange" data-method="delete">
-      <label>Before (ISO UTC) <input name="before" placeholder="2026-04-03T18:00:00+00:00"></label>
-      <button class="del" type="submit">Delete rows older than date</button>
+      <label>After (ISO UTC, optional) <input name="after" placeholder="leave blank = no lower bound"></label>
+      <label>Before (ISO UTC, required) <input name="before" placeholder="2026-04-03T18:00:00+00:00" required></label>
+      <button class="del" type="submit">Delete rows in time window</button>
     </form>
     <form data-action="/admin/sqlite/purge" data-method="delete">
       <button class="del" type="submit" onclick="return confirm('Purge EVERYTHING from SQLite?')">⚠ Purge entire SQLite DB</button>
@@ -191,13 +205,66 @@ def sqlite_delete_user(username: str, conn: sqlite3.Connection = Depends(get_db)
 
 
 @admin.delete("/admin/sqlite/timerange")
-def sqlite_delete_timerange(before: str, conn: sqlite3.Connection = Depends(get_db)):
+def sqlite_delete_timerange(
+    before: str,
+    after: str | None = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """
+    Delete rows older than `before` (required).
+    If `after` is also supplied, deletes only the window between `after` and `before`.
+    Both values must be ISO-8601 UTC strings.
+    """
+    counts = {}
     for table in ("process_snapshots", "gpu_snapshots", "abuse_events"):
-        conn.execute(f"DELETE FROM {table} WHERE ts < ?", (before,))  # noqa: S608
+        if after:
+            cur = conn.execute(
+                f"DELETE FROM {table} WHERE ts >= ? AND ts <= ?",  # noqa: S608
+                (after, before),
+            )
+        else:
+            cur = conn.execute(
+                f"DELETE FROM {table} WHERE ts < ?",  # noqa: S608
+                (before,),
+            )
+        counts[table] = cur.rowcount
     conn.commit()
     conn.execute("VACUUM")
     conn.commit()
-    return {"deleted_rows_before": before}
+    return {"deleted": counts, "after": after, "before": before}
+
+
+@admin.delete("/admin/sqlite/process")
+def sqlite_delete_process(
+    name: str,
+    username: str | None = None,
+    after: str | None = None,
+    before: str | None = None,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """
+    Delete process_snapshots rows matching a process name (GLOB pattern, e.g. 'python*').
+    Optionally filter by username, and/or restrict to a time window.
+    """
+    clauses = ["name GLOB ?"]
+    params: list = [name]
+
+    if username:
+        clauses.append("username = ?")
+        params.append(username)
+    if after:
+        clauses.append("ts >= ?")
+        params.append(after)
+    if before:
+        clauses.append("ts <= ?")
+        params.append(before)
+
+    where = " AND ".join(clauses)
+    cur = conn.execute(f"DELETE FROM process_snapshots WHERE {where}", params)  # noqa: S608
+    conn.commit()
+    conn.execute("VACUUM")
+    conn.commit()
+    return {"deleted": cur.rowcount, "pattern": name, "username": username, "after": after, "before": before}
 
 
 @admin.delete("/admin/sqlite/purge")

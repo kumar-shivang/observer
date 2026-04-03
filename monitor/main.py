@@ -90,10 +90,10 @@ async def main() -> None:
     )
     server = uvicorn.Server(server_config)
 
-    # Admin backdoor — bound to 127.0.0.1 only
+    # Admin backdoor — host-side port binding restricts to localhost only
     admin_config = uvicorn.Config(
         admin,
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=config.ADMIN_PORT,
         log_level="warning",
     )
