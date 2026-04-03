@@ -17,6 +17,7 @@ import uvicorn
 
 from monitor import config, storage
 from monitor.api import app
+from monitor.admin import admin
 from monitor.collector import collect
 from monitor.aggregator import aggregate_by_user, detect_abuse
 from monitor.metrics import update_user_metrics, update_gpu_metrics, record_abuse_events
@@ -80,18 +81,27 @@ async def main() -> None:
     # Attach DB connection to FastAPI app state so endpoints can reach it
     app.state.db_conn = conn
 
-    # Start API server (non-blocking)
+    # Public API server
     server_config = uvicorn.Config(
         app,
         host=config.API_HOST,
         port=config.API_PORT,
-        log_level="warning",  # uvicorn access logs are noisy; our collector logs are enough
+        log_level="warning",
     )
     server = uvicorn.Server(server_config)
 
-    # Run both concurrently
+    # Admin backdoor — bound to 127.0.0.1 only
+    admin_config = uvicorn.Config(
+        admin,
+        host="127.0.0.1",
+        port=config.ADMIN_PORT,
+        log_level="warning",
+    )
+    admin_server = uvicorn.Server(admin_config)
+
     await asyncio.gather(
         server.serve(),
+        admin_server.serve(),
         collector_loop(conn),
     )
 

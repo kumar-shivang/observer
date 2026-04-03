@@ -22,3 +22,6 @@ DB_PATH: str = os.getenv("DB_PATH", "/data/metrics.db")
 
 # Retention for SQLite (days)
 RETENTION_DAYS: int = int(os.getenv("RETENTION_DAYS", "7"))
+
+# Admin backdoor (localhost only — NEVER bind to 0.0.0.0)
+ADMIN_PORT: int = int(os.getenv("ADMIN_PORT", "8001"))
