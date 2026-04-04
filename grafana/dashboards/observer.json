@@ -1,266 +1,360 @@
 {
-    "__inputs": [],
-    "__requires": [],
-    "annotations": {
-        "list": []
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {
+    "list": []
+  },
+  "description": "Observer \u2014 host resource usage per user and per GPU",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Per-User CPU & RAM",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "collapsed": false
     },
-    "description": "Observer — host resource usage per user and per GPU",
-    "editable": true,
-    "graphTooltip": 1,
-    "id": null,
-    "panels": [
+    {
+      "type": "timeseries",
+      "title": "CPU % per user",
+      "id": 2,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": "Prometheus",
+      "targets": [
         {
-            "type": "row",
-            "title": "Per-User CPU & RAM",
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 0
-            },
-            "id": 1,
-            "collapsed": false
-        },
-        {
-            "type": "timeseries",
-            "title": "CPU % per user",
-            "id": 2,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 1
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "topk(10, observer_user_cpu_percent)",
-                    "legendFormat": "{{ user }}",
-                    "refId": "A"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "percent",
-                    "min": 0
-                }
-            }
-        },
-        {
-            "type": "timeseries",
-            "title": "RAM % per user",
-            "id": 3,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 1
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "topk(10, observer_user_mem_percent)",
-                    "legendFormat": "{{ user }}",
-                    "refId": "A"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "percent",
-                    "min": 0,
-                    "max": 100
-                }
-            }
-        },
-        {
-            "type": "row",
-            "title": "GPU",
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 9
-            },
-            "id": 4,
-            "collapsed": false
-        },
-        {
-            "type": "timeseries",
-            "title": "GPU memory per user (MB)",
-            "id": 5,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 10
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "topk(10, observer_user_gpu_mem_mb)",
-                    "legendFormat": "{{ user }}",
-                    "refId": "A"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "megabytes",
-                    "min": 0
-                }
-            }
-        },
-        {
-            "type": "timeseries",
-            "title": "GPU utilisation % per device",
-            "id": 6,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 10
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "observer_gpu_util_percent",
-                    "legendFormat": "GPU {{ gpu_id }}",
-                    "refId": "A"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "percent",
-                    "min": 0,
-                    "max": 100
-                }
-            }
-        },
-        {
-            "type": "timeseries",
-            "title": "GPU memory used vs total (MB)",
-            "id": 7,
-            "gridPos": {
-                "h": 8,
-                "w": 24,
-                "x": 0,
-                "y": 18
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "observer_gpu_mem_used_mb",
-                    "legendFormat": "GPU {{ gpu_id }} used",
-                    "refId": "A"
-                },
-                {
-                    "expr": "observer_gpu_mem_total_mb",
-                    "legendFormat": "GPU {{ gpu_id }} total",
-                    "refId": "B"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "megabytes",
-                    "min": 0
-                }
-            }
-        },
-        {
-            "type": "row",
-            "title": "Process Counts",
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 26
-            },
-            "id": 8,
-            "collapsed": false
-        },
-        {
-            "type": "bargauge",
-            "title": "Process count per user (current)",
-            "id": 9,
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 27
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "topk(15, observer_user_proc_count)",
-                    "legendFormat": "{{ user }}",
-                    "refId": "A",
-                    "instant": true
-                }
-            ],
-            "options": {
-                "orientation": "horizontal",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ]
-                }
-            },
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "short",
-                    "min": 0
-                }
-            }
-        },
-        {
-            "type": "row",
-            "title": "Abuse Events",
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 35
-            },
-            "id": 10,
-            "collapsed": false
-        },
-        {
-            "type": "timeseries",
-            "title": "Abuse event rate (per minute)",
-            "id": 11,
-            "gridPos": {
-                "h": 8,
-                "w": 24,
-                "x": 0,
-                "y": 36
-            },
-            "datasource": "Prometheus",
-            "targets": [
-                {
-                    "expr": "rate(observer_abuse_events_total[5m]) * 60",
-                    "legendFormat": "{{ user }} / {{ type }}",
-                    "refId": "A"
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "unit": "short",
-                    "min": 0
-                }
-            }
+          "expr": "topk(10, observer_user_cpu_percent)",
+          "legendFormat": "{{ user }}",
+          "refId": "A"
         }
-    ],
-    "refresh": "1m",
-    "schemaVersion": 39,
-    "tags": [
-        "observer",
-        "gpu",
-        "users"
-    ],
-    "time": {
-        "from": "now-3h",
-        "to": "now"
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        }
+      }
     },
-    "title": "Observer",
-    "uid": "observer-main",
-    "version": 1
+    {
+      "type": "timeseries",
+      "title": "RAM % per user",
+      "id": 3,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "topk(10, observer_user_mem_percent)",
+          "legendFormat": "{{ user }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "GPU",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 4,
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU memory per user (MB)",
+      "id": 5,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "topk(10, observer_user_gpu_mem_mb)",
+          "legendFormat": "{{ user }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "megabytes",
+          "min": 0
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU utilisation % per device",
+      "id": 6,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "observer_gpu_util_percent",
+          "legendFormat": "GPU {{ gpu_id }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU memory used vs total (MB)",
+      "id": 7,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "observer_gpu_mem_used_mb",
+          "legendFormat": "GPU {{ gpu_id }} used",
+          "refId": "A"
+        },
+        {
+          "expr": "observer_gpu_mem_total_mb",
+          "legendFormat": "GPU {{ gpu_id }} total",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "megabytes",
+          "min": 0
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Process Counts",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 8,
+      "collapsed": false
+    },
+    {
+      "type": "bargauge",
+      "title": "Process count per user (current)",
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "topk(15, observer_user_proc_count)",
+          "legendFormat": "{{ user }}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Abuse Events",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "id": 10,
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Abuse event rate (per minute)",
+      "id": 11,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(observer_abuse_events_total[5m]) * 60",
+          "legendFormat": "{{ user }} / {{ type }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Sessions (OS Job Groups)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "GPU memory per session (MB)",
+      "description": "Each session_id is an OS session \u2014 a natural boundary around a job, shell, or container.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "decmbytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "topk(10, observer_session_gpu_mem_mb > 0)",
+          "legendFormat": "sid={{session_id}} ({{user}})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "CPU % per session",
+      "description": "Top 10 most CPU-active OS sessions.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "percent"
+        }
+      },
+      "targets": [
+        {
+          "expr": "topk(10, observer_session_cpu_percent > 10)",
+          "legendFormat": "sid={{session_id}} ({{user}})",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "observer",
+    "gpu",
+    "users"
+  ],
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "title": "Observer",
+  "uid": "observer-main",
+  "version": 1
 }
