@@ -55,6 +55,30 @@ GPU_MEM_TOTAL = Gauge(
 )
 
 # ---------------------------------------------------------------------------
+# Per-session gauges  (session_id = OS session = natural job/container boundary)
+# ---------------------------------------------------------------------------
+SESSION_CPU = Gauge(
+    "observer_session_cpu_percent",
+    "Aggregated CPU % for all processes in this OS session",
+    ["session_id", "user"],
+)
+SESSION_MEM = Gauge(
+    "observer_session_mem_percent",
+    "Aggregated RAM % for all processes in this OS session",
+    ["session_id", "user"],
+)
+SESSION_GPU_MEM = Gauge(
+    "observer_session_gpu_mem_mb",
+    "Aggregated GPU memory (MB) for all processes in this OS session",
+    ["session_id", "user"],
+)
+SESSION_PROC_COUNT = Gauge(
+    "observer_session_proc_count",
+    "Number of processes in this OS session",
+    ["session_id", "user"],
+)
+
+# ---------------------------------------------------------------------------
 # Abuse counter
 # ---------------------------------------------------------------------------
 ABUSE_EVENTS = Counter(
@@ -74,6 +98,16 @@ def update_user_metrics(user_agg: dict[str, dict]) -> None:
         USER_MEM.labels(user=user).set(vals["mem_pct"])
         USER_GPU_MEM.labels(user=user).set(vals["gpu_mem_mb"])
         USER_PROC_COUNT.labels(user=user).set(vals["proc_count"])
+
+
+def update_session_metrics(session_agg: dict[int, dict]) -> None:
+    for sid, vals in session_agg.items():
+        sid_str = str(sid)
+        user = vals.get("username", "unknown")
+        SESSION_CPU.labels(session_id=sid_str, user=user).set(vals["cpu"])
+        SESSION_MEM.labels(session_id=sid_str, user=user).set(vals["mem_pct"])
+        SESSION_GPU_MEM.labels(session_id=sid_str, user=user).set(vals["gpu_mem_mb"])
+        SESSION_PROC_COUNT.labels(session_id=sid_str, user=user).set(vals["proc_count"])
 
 
 def update_gpu_metrics(gpu_summary: list[dict]) -> None:

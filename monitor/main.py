@@ -19,8 +19,8 @@ from monitor import config, storage
 from monitor.api import app
 from monitor.admin import admin
 from monitor.collector import collect
-from monitor.aggregator import aggregate_by_user, detect_abuse
-from monitor.metrics import update_user_metrics, update_gpu_metrics, record_abuse_events
+from monitor.aggregator import aggregate_by_user, aggregate_by_session, detect_abuse
+from monitor.metrics import update_user_metrics, update_session_metrics, update_gpu_metrics, record_abuse_events
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,6 +58,7 @@ async def collector_loop(conn: sqlite3.Connection) -> None:
 
             # Push aggregated data to Prometheus gauges
             update_user_metrics(user_agg)
+            update_session_metrics(aggregate_by_session(processes))
             update_gpu_metrics(gpu_summary)
             record_abuse_events(abuse_events)
 
