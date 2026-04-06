@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     pid: host                  # CRITICAL: see host /proc
     privileged: true           # needed for full process visibility
+    userns_mode: host          # required when daemon has userns-remap enabled
     volumes:
       - /proc:/proc            # host proc (belt + suspenders alongside --pid=host)
       - /etc/passwd:/etc/passwd:ro   # resolve UIDs → usernames
