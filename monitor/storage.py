@@ -57,7 +57,7 @@ def init_db(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_gs_ts ON gpu_snapshots(ts);
 
-        CREATE TABLE IF NOT EXISTS abuse_events (
+        CREATE TABLE IF NOT EXISTS hike_events (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             ts        TEXT NOT NULL,
             username  TEXT,
@@ -74,7 +74,7 @@ def save_snapshot(
     conn: sqlite3.Connection,
     processes: list[dict],
     gpu_summary: list[dict],
-    abuse_events: list[dict],
+    hike_events: list[dict],
 ) -> None:
     ts = datetime.now(timezone.utc).isoformat()
 
@@ -120,15 +120,15 @@ def save_snapshot(
         ],
     )
 
-    if abuse_events:
+    if hike_events:
         conn.executemany(
             """
-            INSERT INTO abuse_events (ts, username, type, value, threshold)
+            INSERT INTO hike_events (ts, username, type, value, threshold)
             VALUES (?, ?, ?, ?, ?)
             """,
             [
                 (ts, e["user"], e["type"], e["value"], e["threshold"])
-                for e in abuse_events
+                for e in hike_events
             ],
         )
 
@@ -137,10 +137,8 @@ def save_snapshot(
 
 
 def _prune(conn: sqlite3.Connection) -> None:
-    cutoff = (
-        datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
-    ).isoformat()
-    for table in ("process_snapshots", "gpu_snapshots", "abuse_events"):
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)).isoformat()
+    for table in ("process_snapshots", "gpu_snapshots", "hike_events"):
         conn.execute(f"DELETE FROM {table} WHERE ts < ?", (cutoff,))  # noqa: S608
     conn.commit()
 
@@ -154,9 +152,7 @@ def query_top_users(
     conn: sqlite3.Connection, minutes: int = 60, limit: int = 20
 ) -> list[dict]:
     """Top users by GPU memory over the last N minutes."""
-    since = (
-        datetime.now(timezone.utc) - timedelta(minutes=minutes)
-    ).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
     rows = conn.execute(
         """
         SELECT username,
@@ -176,26 +172,18 @@ def query_top_users(
     return [dict(zip(cols, r)) for r in rows]
 
 
-def query_abuse_events(
-    conn: sqlite3.Connection, hours: int = 24
-) -> list[dict]:
-    since = (
-        datetime.now(timezone.utc) - timedelta(hours=hours)
-    ).isoformat()
+def query_hike_events(conn: sqlite3.Connection, hours: int = 24) -> list[dict]:
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     rows = conn.execute(
-        "SELECT ts, username, type, value, threshold FROM abuse_events WHERE ts >= ? ORDER BY ts DESC",
+        "SELECT ts, username, type, value, threshold FROM hike_events WHERE ts >= ? ORDER BY ts DESC",
         (since,),
     ).fetchall()
     cols = ["ts", "username", "type", "value", "threshold"]
     return [dict(zip(cols, r)) for r in rows]
 
 
-def query_gpu_history(
-    conn: sqlite3.Connection, hours: int = 24
-) -> list[dict]:
-    since = (
-        datetime.now(timezone.utc) - timedelta(hours=hours)
-    ).isoformat()
+def query_gpu_history(conn: sqlite3.Connection, hours: int = 24) -> list[dict]:
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     rows = conn.execute(
         """
         SELECT ts, gpu_id, util_pct, mem_used_mb, mem_total_mb

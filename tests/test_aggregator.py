@@ -1,24 +1,46 @@
 """
 Tests for monitor.aggregator
 """
+
 from monitor.aggregator import (
     aggregate_by_proc_name,
     aggregate_by_session,
     aggregate_by_user,
-    detect_abuse,
+    detect_hike,
     group_by_session,
 )
 
 PROCESSES = [
-    {"pid": 1, "username": "alice", "name": "python3", "cmd_short": "python3 train.py",
-     "cpu_percent": 50.0, "memory_percent": 5.0, "gpu_mem_mb": 4096.0,
-     "session_id": 100},
-    {"pid": 2, "username": "alice", "name": "python3", "cmd_short": "python3 infer.py",
-     "cpu_percent": 30.0, "memory_percent": 3.0, "gpu_mem_mb": 2048.0,
-     "session_id": 100},
-    {"pid": 3, "username": "bob",   "name": "bash",    "cmd_short": "bash",
-     "cpu_percent": 10.0, "memory_percent": 0.5, "gpu_mem_mb": 0.0,
-     "session_id": 200},
+    {
+        "pid": 1,
+        "username": "alice",
+        "name": "python3",
+        "cmd_short": "python3 train.py",
+        "cpu_percent": 50.0,
+        "memory_percent": 5.0,
+        "gpu_mem_mb": 4096.0,
+        "session_id": 100,
+    },
+    {
+        "pid": 2,
+        "username": "alice",
+        "name": "python3",
+        "cmd_short": "python3 infer.py",
+        "cpu_percent": 30.0,
+        "memory_percent": 3.0,
+        "gpu_mem_mb": 2048.0,
+        "session_id": 100,
+    },
+    {
+        "pid": 3,
+        "username": "bob",
+        "name": "bash",
+        "cmd_short": "bash",
+        "cpu_percent": 10.0,
+        "memory_percent": 0.5,
+        "gpu_mem_mb": 0.0,
+        "session_id": 200,
+    },
 ]
 
 
@@ -43,14 +65,28 @@ class TestAggregateByUser:
         assert agg["bob"]["proc_count"] == 1
 
     def test_handles_none_username(self):
-        procs = [{"pid": 99, "username": None, "cpu_percent": 5.0,
-                  "memory_percent": 1.0, "gpu_mem_mb": 0.0}]
+        procs = [
+            {
+                "pid": 99,
+                "username": None,
+                "cpu_percent": 5.0,
+                "memory_percent": 1.0,
+                "gpu_mem_mb": 0.0,
+            }
+        ]
         agg = aggregate_by_user(procs)
         assert "unknown" in agg
 
     def test_handles_none_cpu(self):
-        procs = [{"pid": 99, "username": "alice", "cpu_percent": None,
-                  "memory_percent": 1.0, "gpu_mem_mb": 0.0}]
+        procs = [
+            {
+                "pid": 99,
+                "username": "alice",
+                "cpu_percent": None,
+                "memory_percent": 1.0,
+                "gpu_mem_mb": 0.0,
+            }
+        ]
         agg = aggregate_by_user(procs)
         assert agg["alice"]["cpu"] == 0.0
 
@@ -69,25 +105,43 @@ class TestAggregateByProcName:
         assert aggregate_by_proc_name([]) == {}
 
 
-class TestDetectAbuse:
+class TestDetectHike:
     def test_flags_high_gpu(self):
-        user_agg = {"alice": {"cpu": 10.0, "mem_pct": 1.0, "gpu_mem_mb": 15000.0, "proc_count": 1}}
-        events = detect_abuse(user_agg, gpu_threshold_mb=10000, cpu_threshold=500)
+        user_agg = {
+            "alice": {
+                "cpu": 10.0,
+                "mem_pct": 1.0,
+                "gpu_mem_mb": 15000.0,
+                "proc_count": 1,
+            }
+        }
+        events = detect_hike(user_agg, gpu_threshold_mb=10000, cpu_threshold=500)
         assert any(e["type"] == "gpu_mem" and e["user"] == "alice" for e in events)
 
     def test_flags_high_cpu(self):
-        user_agg = {"alice": {"cpu": 300.0, "mem_pct": 1.0, "gpu_mem_mb": 0.0, "proc_count": 5}}
-        events = detect_abuse(user_agg, gpu_threshold_mb=10000, cpu_threshold=200)
+        user_agg = {
+            "alice": {"cpu": 300.0, "mem_pct": 1.0, "gpu_mem_mb": 0.0, "proc_count": 5}
+        }
+        events = detect_hike(user_agg, gpu_threshold_mb=10000, cpu_threshold=200)
         assert any(e["type"] == "cpu" and e["user"] == "alice" for e in events)
 
-    def test_no_abuse_below_thresholds(self):
-        user_agg = {"alice": {"cpu": 10.0, "mem_pct": 1.0, "gpu_mem_mb": 100.0, "proc_count": 1}}
-        events = detect_abuse(user_agg)
+    def test_no_hike_below_thresholds(self):
+        user_agg = {
+            "alice": {"cpu": 10.0, "mem_pct": 1.0, "gpu_mem_mb": 100.0, "proc_count": 1}
+        }
+        events = detect_hike(user_agg)
         assert events == []
 
     def test_returns_all_breaches_for_user(self):
-        user_agg = {"alice": {"cpu": 999.0, "mem_pct": 1.0, "gpu_mem_mb": 99999.0, "proc_count": 1}}
-        events = detect_abuse(user_agg, gpu_threshold_mb=1000, cpu_threshold=100)
+        user_agg = {
+            "alice": {
+                "cpu": 999.0,
+                "mem_pct": 1.0,
+                "gpu_mem_mb": 99999.0,
+                "proc_count": 1,
+            }
+        }
+        events = detect_hike(user_agg, gpu_threshold_mb=1000, cpu_threshold=100)
         types = {e["type"] for e in events}
         assert "gpu_mem" in types
         assert "cpu" in types
@@ -145,8 +199,15 @@ class TestAggregateBySession:
         assert agg[200]["username"] == "bob"
 
     def test_handles_missing_session_id(self):
-        procs = [{"pid": 99, "username": "carol", "cpu_percent": 5.0,
-                  "memory_percent": 1.0, "gpu_mem_mb": 0.0}]
+        procs = [
+            {
+                "pid": 99,
+                "username": "carol",
+                "cpu_percent": 5.0,
+                "memory_percent": 1.0,
+                "gpu_mem_mb": 0.0,
+            }
+        ]
         agg = aggregate_by_session(procs)
         assert -1 in agg
         assert agg[-1]["cpu"] == 5.0

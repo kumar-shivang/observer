@@ -9,9 +9,9 @@ import os
 # How often to collect metrics (seconds)
 COLLECT_INTERVAL: int = int(os.getenv("COLLECT_INTERVAL", "60"))
 
-# Abuse detection thresholds
-ABUSE_GPU_MEM_MB: float = float(os.getenv("ABUSE_GPU_MEM_MB", "10000"))
-ABUSE_CPU_PERCENT: float = float(os.getenv("ABUSE_CPU_PERCENT", "200"))
+# Hike detection thresholds
+HIKE_GPU_MEM_MB: float = float(os.getenv("HIKE_GPU_MEM_MB", "10000"))
+HIKE_CPU_PERCENT: float = float(os.getenv("HIKE_CPU_PERCENT", "200"))
 
 # API server bind
 API_HOST: str = os.getenv("API_HOST", "0.0.0.0")

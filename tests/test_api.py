@@ -2,6 +2,7 @@
 Tests for monitor.api — all endpoints via FastAPI TestClient.
 Uses an in-memory SQLite DB injected into app.state.
 """
+
 import sqlite3
 
 import pytest
@@ -43,12 +44,17 @@ def client():
 
 PROCS = [
     {
-        "pid": 1, "username": "alice", "name": "python3", "cmd_short": "python3 train.py",
-        "cpu_percent": 50.0, "memory_percent": 5.0, "gpu_mem_mb": 4096.0,
+        "pid": 1,
+        "username": "alice",
+        "name": "python3",
+        "cmd_short": "python3 train.py",
+        "cpu_percent": 50.0,
+        "memory_percent": 5.0,
+        "gpu_mem_mb": 4096.0,
     }
 ]
 GPUS = [{"gpu_id": 0, "util_pct": 72.0, "mem_used_mb": 8192.0, "mem_total_mb": 24576.0}]
-ABUSE = [{"user": "alice", "type": "gpu_mem", "value": 4096.0, "threshold": 3000.0}]
+HIKE = [{"user": "alice", "type": "gpu_mem", "value": 4096.0, "threshold": 3000.0}]
 
 
 class TestHealth:
@@ -84,17 +90,17 @@ class TestTopEndpoint:
         assert r.json() == []
 
 
-class TestAbuseEndpoint:
-    def test_returns_abuse_events(self, client, inject_db):
-        storage.save_snapshot(inject_db, [], [], ABUSE)
-        r = client.get("/abuse?hours=24")
+class TestHikeEndpoint:
+    def test_returns_hike_events(self, client, inject_db):
+        storage.save_snapshot(inject_db, [], [], HIKE)
+        r = client.get("/hike?hours=24")
         assert r.status_code == 200
         events = r.json()
         assert len(events) == 1
         assert events[0]["username"] == "alice"
 
     def test_empty_when_no_events(self, client):
-        r = client.get("/abuse")
+        r = client.get("/hike")
         assert r.status_code == 200
         assert r.json() == []
 

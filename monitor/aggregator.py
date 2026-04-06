@@ -54,13 +54,13 @@ def aggregate_by_proc_name(processes: list[dict]) -> dict[str, dict]:
     return dict(agg)
 
 
-def detect_abuse(
+def detect_hike(
     user_agg: dict[str, dict],
     gpu_threshold_mb: float = 10_000,
     cpu_threshold: float = 200.0,
 ) -> list[dict]:
     """
-    Returns a list of abuse events (dicts) for users exceeding thresholds.
+    Returns a list of hike events (dicts) for users exceeding thresholds.
     Callers can log these, alert, or take action.
     """
     events = []

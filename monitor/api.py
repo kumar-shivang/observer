@@ -5,7 +5,7 @@ FastAPI application exposing:
   GET /metrics          — Prometheus scrape endpoint
   GET /health           — liveness probe
   GET /top              — top users by GPU/CPU over last N minutes
-  GET /abuse            — abuse events from the last 24 h
+  GET /hike            — hike events from the last 24 h
   GET /gpu/history      — per-GPU utilisation history
   GET /processes/latest — latest raw process snapshot for a user
 
@@ -55,7 +55,9 @@ def prometheus_metrics():
 
 @app.get("/top")
 def top_users(
-    minutes: int = Query(default=60, ge=1, le=10080, description="Look-back window in minutes"),
+    minutes: int = Query(
+        default=60, ge=1, le=10080, description="Look-back window in minutes"
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     conn: sqlite3.Connection = Depends(get_db),
 ):
@@ -63,13 +65,13 @@ def top_users(
     return storage.query_top_users(conn, minutes=minutes, limit=limit)
 
 
-@app.get("/abuse")
-def abuse_events(
+@app.get("/hike")
+def hike_events(
     hours: int = Query(default=24, ge=1, le=168),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    """Recent abuse threshold breaches."""
-    return storage.query_abuse_events(conn, hours=hours)
+    """Recent hike threshold breaches."""
+    return storage.query_hike_events(conn, hours=hours)
 
 
 @app.get("/gpu/history")
@@ -97,5 +99,13 @@ def latest_processes(
         """,
         (user,),
     ).fetchall()
-    cols = ["ts", "pid", "name", "cmd_short", "cpu_percent", "mem_percent", "gpu_mem_mb"]
+    cols = [
+        "ts",
+        "pid",
+        "name",
+        "cmd_short",
+        "cpu_percent",
+        "mem_percent",
+        "gpu_mem_mb",
+    ]
     return [dict(zip(cols, r)) for r in rows]

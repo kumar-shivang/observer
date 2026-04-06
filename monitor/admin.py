@@ -16,8 +16,13 @@ from pydantic import BaseModel
 
 from monitor import storage
 from monitor.metrics import (
-    USER_CPU, USER_MEM, USER_GPU_MEM, USER_PROC_COUNT,
-    GPU_UTIL, GPU_MEM_USED, GPU_MEM_TOTAL,
+    USER_CPU,
+    USER_MEM,
+    USER_GPU_MEM,
+    USER_PROC_COUNT,
+    GPU_UTIL,
+    GPU_MEM_USED,
+    GPU_MEM_TOTAL,
 )
 from monitor import config
 
@@ -27,6 +32,7 @@ admin = FastAPI(title="Observer Admin", docs_url="/docs", redoc_url=None)
 
 
 # ── DB dependency ─────────────────────────────────────────────────────────────
+
 
 def get_db():
     conn = storage._connect()
@@ -38,6 +44,7 @@ def get_db():
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
+
 class FakeProcessRow(BaseModel):
     username: str
     name: str = "fake_process"
@@ -46,7 +53,7 @@ class FakeProcessRow(BaseModel):
     mem_percent: float = 0.0
     gpu_mem_mb: float = 0.0
     pid: int = 99999
-    count: int = 1          # how many identical rows to insert
+    count: int = 1  # how many identical rows to insert
 
 
 class FakeMetric(BaseModel):
@@ -114,12 +121,18 @@ document.querySelectorAll('form').forEach(f => f.addEventListener('submit', e =>
 
 @admin.get("/", response_class=HTMLResponse)
 def ui(conn: sqlite3.Connection = Depends(get_db)):
-    users = [r[0] for r in conn.execute(
-        "SELECT DISTINCT username FROM process_snapshots ORDER BY username"
-    ).fetchall()]
-    proc_names = [r[0] for r in conn.execute(
-        "SELECT DISTINCT name FROM process_snapshots ORDER BY name"
-    ).fetchall()]
+    users = [
+        r[0]
+        for r in conn.execute(
+            "SELECT DISTINCT username FROM process_snapshots ORDER BY username"
+        ).fetchall()
+    ]
+    proc_names = [
+        r[0]
+        for r in conn.execute(
+            "SELECT DISTINCT name FROM process_snapshots ORDER BY name"
+        ).fetchall()
+    ]
     user_opts = "".join(f'<option value="{u}">{u}</option>' for u in users)
     user_opts_blank = '<option value="">— any —</option>' + user_opts
     proc_opts = "".join(f'<option value="{p}">{p}</option>' for p in proc_names)
@@ -191,13 +204,14 @@ def ui(conn: sqlite3.Connection = Depends(get_db)):
 
 # ── SQLite delete endpoints ───────────────────────────────────────────────────
 
+
 @admin.delete("/admin/sqlite/user")
 def sqlite_delete_user(username: str, conn: sqlite3.Connection = Depends(get_db)):
     count = conn.execute(
         "SELECT COUNT(*) FROM process_snapshots WHERE username = ?", (username,)
     ).fetchone()[0]
     conn.execute("DELETE FROM process_snapshots WHERE username = ?", (username,))
-    conn.execute("DELETE FROM abuse_events WHERE username = ?", (username,))
+    conn.execute("DELETE FROM hike_events WHERE username = ?", (username,))
     conn.commit()
     conn.execute("VACUUM")
     conn.commit()
@@ -216,7 +230,7 @@ def sqlite_delete_timerange(
     Both values must be ISO-8601 UTC strings.
     """
     counts = {}
-    for table in ("process_snapshots", "gpu_snapshots", "abuse_events"):
+    for table in ("process_snapshots", "gpu_snapshots", "hike_events"):
         if after:
             cur = conn.execute(
                 f"DELETE FROM {table} WHERE ts >= ? AND ts <= ?",  # noqa: S608
@@ -264,12 +278,18 @@ def sqlite_delete_process(
     conn.commit()
     conn.execute("VACUUM")
     conn.commit()
-    return {"deleted": cur.rowcount, "pattern": name, "username": username, "after": after, "before": before}
+    return {
+        "deleted": cur.rowcount,
+        "pattern": name,
+        "username": username,
+        "after": after,
+        "before": before,
+    }
 
 
 @admin.delete("/admin/sqlite/purge")
 def sqlite_purge(conn: sqlite3.Connection = Depends(get_db)):
-    for table in ("process_snapshots", "gpu_snapshots", "abuse_events"):
+    for table in ("process_snapshots", "gpu_snapshots", "hike_events"):
         conn.execute(f"DELETE FROM {table}")  # noqa: S608
     conn.commit()
     conn.execute("VACUUM")
@@ -278,6 +298,7 @@ def sqlite_purge(conn: sqlite3.Connection = Depends(get_db)):
 
 
 # ── SQLite fake data endpoint ─────────────────────────────────────────────────
+
 
 @admin.post("/admin/sqlite/fake")
 def sqlite_fake(
@@ -295,13 +316,15 @@ def sqlite_fake(
         """INSERT INTO process_snapshots
            (ts, pid, username, name, cmd_short, cpu_percent, mem_percent, gpu_mem_mb)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        [(ts, 99999, username, name, name, cpu_percent, mem_percent, gpu_mem_mb)] * count,
+        [(ts, 99999, username, name, name, cpu_percent, mem_percent, gpu_mem_mb)]
+        * count,
     )
     conn.commit()
     return {"inserted": count, "username": username, "ts": ts}
 
 
 # ── Prometheus gauge override ─────────────────────────────────────────────────
+
 
 @admin.post("/admin/prometheus/fake-metric")
 def prometheus_fake(
@@ -319,6 +342,7 @@ def prometheus_fake(
 
 
 # ── Prometheus TSDB delete ────────────────────────────────────────────────────
+
 
 @admin.post("/admin/prometheus/delete-series")
 def prometheus_delete_user_series(username: str = Form(...)):
@@ -348,14 +372,14 @@ def prometheus_delete_all_series():
         "observer_gpu_util_percent",
         "observer_gpu_mem_used_mb",
         "observer_gpu_mem_total_mb",
-        "observer_abuse_events_total",
+        "observer_hike_events_total",
     ]
     results = {}
     with httpx.Client(timeout=15) as client:
         for metric in prefixes:
             r = client.post(
                 f"{PROMETHEUS_URL}/api/v1/admin/tsdb/delete_series",
-                params={"match[]": f"{{{metric}!=\"\"}}"},
+                params={"match[]": f'{{{metric}!=""}}'},
             )
             results[metric] = r.status_code
         client.post(f"{PROMETHEUS_URL}/api/v1/admin/tsdb/clean_tombstones")

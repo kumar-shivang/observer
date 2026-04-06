@@ -79,11 +79,11 @@ SESSION_PROC_COUNT = Gauge(
 )
 
 # ---------------------------------------------------------------------------
-# Abuse counter
+# Hike counter
 # ---------------------------------------------------------------------------
-ABUSE_EVENTS = Counter(
-    "observer_abuse_events_total",
-    "Total abuse threshold breaches detected",
+HIKE_EVENTS = Counter(
+    "observer_hike_events_total",
+    "Total hike threshold breaches detected",
     ["user", "type"],
 )
 
@@ -118,10 +118,13 @@ def update_gpu_metrics(gpu_summary: list[dict]) -> None:
         GPU_MEM_TOTAL.labels(gpu_id=gid).set(g["mem_total_mb"])
 
 
-def record_abuse_events(events: list[dict]) -> None:
+def record_hike_events(events: list[dict]) -> None:
     for e in events:
-        ABUSE_EVENTS.labels(user=e["user"], type=e["type"]).inc()
+        HIKE_EVENTS.labels(user=e["user"], type=e["type"]).inc()
         log.warning(
-            "ABUSE: user=%s type=%s value=%.1f threshold=%.1f",
-            e["user"], e["type"], e["value"], e["threshold"],
+            "HIKE: user=%s type=%s value=%.1f threshold=%.1f",
+            e["user"],
+            e["type"],
+            e["value"],
+            e["threshold"],
         )

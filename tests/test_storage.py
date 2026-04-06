@@ -1,6 +1,7 @@
 """
 Tests for monitor.storage — uses in-memory SQLite to avoid touching /data.
 """
+
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -22,12 +23,22 @@ def mem_db():
 
 PROCS = [
     {
-        "pid": 1, "username": "alice", "name": "python3", "cmd_short": "python3 train.py",
-        "cpu_percent": 50.0, "memory_percent": 5.0, "gpu_mem_mb": 4096.0,
+        "pid": 1,
+        "username": "alice",
+        "name": "python3",
+        "cmd_short": "python3 train.py",
+        "cpu_percent": 50.0,
+        "memory_percent": 5.0,
+        "gpu_mem_mb": 4096.0,
     },
     {
-        "pid": 2, "username": "bob", "name": "bash", "cmd_short": "bash",
-        "cpu_percent": 5.0, "memory_percent": 0.5, "gpu_mem_mb": 0.0,
+        "pid": 2,
+        "username": "bob",
+        "name": "bash",
+        "cmd_short": "bash",
+        "cpu_percent": 5.0,
+        "memory_percent": 0.5,
+        "gpu_mem_mb": 0.0,
     },
 ]
 
@@ -35,7 +46,7 @@ GPUS = [
     {"gpu_id": 0, "util_pct": 72.0, "mem_used_mb": 8192.0, "mem_total_mb": 24576.0},
 ]
 
-ABUSE = [
+HIKE = [
     {"user": "alice", "type": "gpu_mem", "value": 4096.0, "threshold": 3000.0},
 ]
 
@@ -48,7 +59,7 @@ class TestInitDb:
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()
         }
-        assert {"process_snapshots", "gpu_snapshots", "abuse_events"} <= tables
+        assert {"process_snapshots", "gpu_snapshots", "hike_events"} <= tables
 
 
 class TestSaveSnapshot:
@@ -62,9 +73,9 @@ class TestSaveSnapshot:
         count = mem_db.execute("SELECT COUNT(*) FROM gpu_snapshots").fetchone()[0]
         assert count == 1
 
-    def test_saves_abuse_rows(self, mem_db):
-        storage.save_snapshot(mem_db, [], [], ABUSE)
-        count = mem_db.execute("SELECT COUNT(*) FROM abuse_events").fetchone()[0]
+    def test_saves_hike_rows(self, mem_db):
+        storage.save_snapshot(mem_db, [], [], HIKE)
+        count = mem_db.execute("SELECT COUNT(*) FROM hike_events").fetchone()[0]
         assert count == 1
 
     def test_no_error_on_empty_inputs(self, mem_db):
@@ -72,9 +83,7 @@ class TestSaveSnapshot:
 
     def test_prune_removes_old_rows(self, mem_db):
         # Insert a row with a timestamp 8 days ago
-        old_ts = (
-            datetime.now(timezone.utc) - timedelta(days=8)
-        ).isoformat()
+        old_ts = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
         mem_db.execute(
             "INSERT INTO process_snapshots "
             "(ts, pid, username, name, cmd_short, cpu_percent, mem_percent, gpu_mem_mb) "
@@ -111,15 +120,15 @@ class TestQueryTopUsers:
         assert results == []
 
 
-class TestQueryAbuseEvents:
-    def test_returns_abuse_events(self, mem_db):
-        storage.save_snapshot(mem_db, [], [], ABUSE)
-        events = storage.query_abuse_events(mem_db, hours=24)
+class TestQueryHikeEvents:
+    def test_returns_hike_events(self, mem_db):
+        storage.save_snapshot(mem_db, [], [], HIKE)
+        events = storage.query_hike_events(mem_db, hours=24)
         assert len(events) == 1
         assert events[0]["username"] == "alice"
 
     def test_empty_when_no_events(self, mem_db):
-        assert storage.query_abuse_events(mem_db, hours=24) == []
+        assert storage.query_hike_events(mem_db, hours=24) == []
 
 
 class TestQueryGpuHistory:

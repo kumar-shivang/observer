@@ -213,7 +213,7 @@
     },
     {
       "type": "row",
-      "title": "Abuse Events",
+      "title": "Hike Events",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -225,7 +225,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Abuse event rate (per minute)",
+      "title": "Hike event rate (per minute)",
       "id": 11,
       "gridPos": {
         "h": 8,
@@ -236,7 +236,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "rate(observer_abuse_events_total[5m]) * 60",
+          "expr": "rate(observer_hike_events_total[5m]) * 60",
           "legendFormat": "{{ user }} / {{ type }}",
           "refId": "A"
         }
